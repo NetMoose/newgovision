@@ -2,7 +2,7 @@
 
 NewGoVision is a lightweight but powerful VS Code extension for Go developers that provides advanced CodeLens features. It is heavily inspired by Tooltitude and Go-Vision, aiming to provide a clean and informative developer experience.
 
-![Icon](icon.png)
+![Screenshot](window_screenshot.png)
 
 ## Features
 
