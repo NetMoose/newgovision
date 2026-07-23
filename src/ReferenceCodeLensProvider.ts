@@ -10,7 +10,7 @@ export class GoReferenceCodeLens extends vscode.CodeLens {
         public kind: vscode.SymbolKind,
         public lensType: LensType,
         public parentKind?: vscode.SymbolKind,
-        public methodCount?: number
+        public methodLocations?: vscode.Location[]
     ) {
         super(range);
     }
@@ -42,7 +42,6 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             return lenses;
         }
 
-        // Flatten symbols
         const allSymbols: {sym: vscode.DocumentSymbol, parentKind?: vscode.SymbolKind}[] = [];
         const flatten = (syms: vscode.DocumentSymbol[], parent?: vscode.SymbolKind) => {
             for (const s of syms) {
@@ -52,15 +51,15 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
         };
         flatten(symbols);
 
-        // Count methods per struct in this document
-        const methodsForStruct = new Map<string, number>();
+        const structMethods = new Map<string, vscode.Location[]>();
         for (const item of allSymbols) {
             if (item.sym.kind === vscode.SymbolKind.Method || item.sym.kind === vscode.SymbolKind.Function) {
                 const firstLine = document.lineAt(item.sym.range.start.line).text;
                 const match = firstLine.match(/func\s+\(\s*\w+\s+\*?\s*(\w+)\s*\)/);
                 if (match) {
                     const structName = match[1];
-                    methodsForStruct.set(structName, (methodsForStruct.get(structName) || 0) + 1);
+                    if (!structMethods.has(structName)) structMethods.set(structName, []);
+                    structMethods.get(structName)!.push(new vscode.Location(document.uri, item.sym.selectionRange));
                 }
             }
         }
@@ -72,21 +71,24 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             const isSystemFunc = sym.kind === vscode.SymbolKind.Function && (sym.name === "main" || sym.name === "init");
             if (isSystemFunc) continue;
 
-            const addLens = (type: LensType, count?: number) => {
+            const addLens = (type: LensType, locs?: vscode.Location[]) => {
                 lenses.push(new GoReferenceCodeLens(
-                    sym.range, document.uri, sym.selectionRange.start, sym.kind, type, item.parentKind, count
+                    sym.range, document.uri, sym.selectionRange.start, sym.kind, type, item.parentKind, locs
                 ));
             };
 
             if (sym.kind === vscode.SymbolKind.Interface) {
                 addLens('refs');
                 addLens('impls');
+                const interfaceMethods = sym.children ? sym.children
+                    .filter(c => c.kind === vscode.SymbolKind.Method || c.kind === vscode.SymbolKind.Function)
+                    .map(c => new vscode.Location(document.uri, c.selectionRange)) : [];
+                addLens('methods', interfaceMethods);
             } else if (sym.kind === vscode.SymbolKind.Struct || sym.kind === vscode.SymbolKind.Class) {
                 addLens('refs');
-                addLens('impls'); // struct implementing interfaces
-                
-                const mCount = methodsForStruct.get(sym.name) || 0;
-                addLens('methods', mCount);
+                addLens('impls'); 
+                const mLocs = structMethods.get(sym.name) || [];
+                addLens('methods', mLocs);
             } else if (sym.kind === vscode.SymbolKind.Method) {
                 addLens('refs');
                 addLens('impls'); 
@@ -105,10 +107,12 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
         const position = codeLens.identifierPosition;
         
         if (codeLens.lensType === 'methods') {
-            const count = codeLens.methodCount || 0;
+            const locs = codeLens.methodLocations || [];
+            const count = locs.length;
             codeLens.command = {
                 title: `${count} method${count !== 1 ? 's' : ''}`,
-                command: '' // Disabled command for now, or could search for methods
+                command: 'newgovision.showLocations',
+                arguments: [locs]
             };
             return codeLens;
         }
@@ -137,15 +141,10 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
         if (token.isCancellationRequested) return codeLens;
 
         if (codeLens.lensType === 'refs') {
-            // Deduplicate refs vs impls (since we don't have impls here, we do basic dedup of self)
             const pureRefs = refLocations.filter(ref => {
                 const isSelf = ref.uri.toString() === codeLens.uri.toString() && !!ref.range.intersection(codeLens.range);
                 return !isSelf;
             });
-            // We can't fully dedup against impls here unless we fetch impls too. 
-            // So let's fetch impls in background just for deduping refs?
-            // Actually, we SHOULD fetch both for accurate pureRefs, or just accept that gopls might include impls in refs.
-            // Let's fetch impls if we are resolving refs.
             let pureImplsForDedup: vscode.Location[] = [];
             try {
                 pureImplsForDedup = await vscode.commands.executeCommand<vscode.Location[]>(
