@@ -103,24 +103,52 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
 
         if (token.isCancellationRequested) return codeLens;
 
-        let refCount = Math.max(0, refLocations.length - 1);
-        let implCount = implLocations.length;
+        // Фильтруем чистые имплементации (исключаем саму декларацию)
+        const pureImpls = implLocations.filter(impl => {
+            const isSelf = impl.uri.toString() === codeLens.uri.toString() && !!impl.range.intersection(codeLens.range);
+            return !isSelf;
+        });
+
+        // Фильтруем чистые references
+        const pureRefs = refLocations.filter(ref => {
+            // Исключаем саму декларацию
+            const isSelf = ref.uri.toString() === codeLens.uri.toString() && !!ref.range.intersection(codeLens.range);
+            if (isSelf) return false;
+
+            // Исключаем всё, что gopls вернул как implementation
+            const isImpl = pureImpls.some(impl => 
+                impl.uri.toString() === ref.uri.toString() && !!impl.range.intersection(ref.range)
+            );
+            if (isImpl) return false;
+
+            return true;
+        });
+
+        let refCount = pureRefs.length;
+        let implCount = pureImpls.length;
         
         const titles: string[] = [];
 
         if (codeLens.kind === vscode.SymbolKind.Interface || (codeLens.kind === vscode.SymbolKind.Method && codeLens.parentKind === vscode.SymbolKind.Interface)) {
             titles.push(`${implCount} impls`);
-            if (refCount > 0) titles.push(`${refCount} refs`);
+            if (refCount > 0) titles.push(`${refCount} ref${refCount > 1 ? 's' : ''}`);
         } else if (codeLens.kind === vscode.SymbolKind.Struct || codeLens.kind === vscode.SymbolKind.Class || codeLens.kind === vscode.SymbolKind.Method) {
-            if (refCount > 0 || implCount === 0) titles.push(`${refCount} refs`);
-            if (implCount > 0) titles.push(`implements ${implCount} intf`);
+            if (refCount > 0 || implCount === 0) titles.push(`${refCount} ref${refCount > 1 ? 's' : ''}`);
+            
+            if (implCount > 0) {
+                if (codeLens.kind === vscode.SymbolKind.Method) {
+                    titles.push(`impls ${implCount} intfc method`);
+                } else {
+                    titles.push(`implements ${implCount} intf`);
+                }
+            }
         } else {
-            titles.push(`${refCount} refs`);
+            titles.push(`${refCount} ref${refCount > 1 ? 's' : ''}`);
         }
 
         if (titles.length === 0) titles.push(`0 refs`);
 
-        const allLocations = [...refLocations, ...implLocations];
+        const allLocations = [...pureRefs, ...pureImpls];
 
         codeLens.command = {
             title: titles.join(' | '),
