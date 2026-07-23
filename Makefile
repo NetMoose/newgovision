@@ -10,7 +10,7 @@ lint:
 	npm run lint
 
 package: compile
-	npx vsce package --no-rewrite-relative-links
+	npx vsce package
 
 clean:
 	rm -rf out/

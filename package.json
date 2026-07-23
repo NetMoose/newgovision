@@ -53,7 +53,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "package": "vsce package --no-rewrite-relative-links"
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "16.x",
