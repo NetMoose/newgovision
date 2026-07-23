@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 class GoReferenceCodeLens extends vscode.CodeLens {
-    constructor(range: vscode.Range, public uri: vscode.Uri) {
+    constructor(range: vscode.Range, public uri: vscode.Uri, public identifierPosition: vscode.Position) {
         super(range);
     }
 }
@@ -44,7 +44,7 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
                     symbol.kind === vscode.SymbolKind.Interface ||
                     symbol.kind === vscode.SymbolKind.Class
                 ) {
-                    lenses.push(new GoReferenceCodeLens(symbol.range, document.uri));
+                    lenses.push(new GoReferenceCodeLens(symbol.range, document.uri, symbol.selectionRange.start));
                 }
                 if (symbol.children && symbol.children.length > 0) {
                     traverseSymbols(symbol.children);
@@ -66,7 +66,7 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             return codeLens;
         }
 
-        const position = codeLens.range.start;
+        const position = codeLens.identifierPosition;
         let locations: vscode.Location[] | undefined;
         
         try {
