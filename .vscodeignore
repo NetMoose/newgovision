@@ -9,3 +9,4 @@ tsconfig.json
 Makefile
 *.vsix
 *.zip
+.github/**

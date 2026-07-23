@@ -1,3 +1,5 @@
+VERSION ?= 1.0.0
+
 .PHONY: install compile lint package clean
 
 install:
@@ -10,6 +12,7 @@ lint:
 	npm run lint
 
 package: compile
+	npm version $(VERSION) --allow-same-version --no-git-tag-version
 	npx vsce package
 
 clean:
