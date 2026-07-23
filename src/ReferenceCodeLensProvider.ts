@@ -44,7 +44,10 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
                     symbol.kind === vscode.SymbolKind.Interface ||
                     symbol.kind === vscode.SymbolKind.Class
                 ) {
-                    lenses.push(new GoReferenceCodeLens(symbol.range, document.uri, symbol.selectionRange.start));
+                    const isSystemFunc = symbol.kind === vscode.SymbolKind.Function && (symbol.name === "main" || symbol.name === "init");
+                    if (!isSystemFunc) {
+                        lenses.push(new GoReferenceCodeLens(symbol.range, document.uri, symbol.selectionRange.start));
+                    }
                 }
                 if (symbol.children && symbol.children.length > 0) {
                     traverseSymbols(symbol.children);
