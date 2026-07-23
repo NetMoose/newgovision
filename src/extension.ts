@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ReferenceCodeLensProvider } from './ReferenceCodeLensProvider';
 import { ReferenceTreeViewProvider, SymbolInfo } from './ReferenceTreeView';
 
@@ -14,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
     const treeProvider = new ReferenceTreeViewProvider();
     vscode.window.registerTreeDataProvider('newgovision.refsView', treeProvider);
 
-    const cmdDisposable = vscode.commands.registerCommand('newgovision.showLocations', async (locations: vscode.Location[], title: string, symbolInfo: SymbolInfo) => {
+    const showLocsDisposable = vscode.commands.registerCommand('newgovision.showLocations', async (locations: vscode.Location[], title: string, symbolInfo: SymbolInfo) => {
         if (!locations || locations.length === 0) {
             return;
         }
@@ -30,7 +31,23 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.commands.executeCommand('newgovision.refsView.focus');
         }
     });
-    context.subscriptions.push(cmdDisposable);
+    context.subscriptions.push(showLocsDisposable);
+
+    const runMainDisposable = vscode.commands.registerCommand('newgovision.runMain', async (uri: vscode.Uri, isDebug: boolean) => {
+        const dir = path.dirname(uri.fsPath);
+        
+        const config: vscode.DebugConfiguration = {
+            type: 'go',
+            name: isDebug ? 'Debug Main' : 'Run Main',
+            request: 'launch',
+            mode: 'auto',
+            program: dir,
+            noDebug: !isDebug
+        };
+        
+        vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder(uri), config);
+    });
+    context.subscriptions.push(runMainDisposable);
 }
 
 export function deactivate() {}

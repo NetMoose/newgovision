@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export type LensType = 'refs' | 'impls' | 'methods';
+export type LensType = 'refs' | 'impls' | 'methods' | 'run' | 'debug';
 
 export class GoReferenceCodeLens extends vscode.CodeLens {
     constructor(
@@ -68,8 +68,15 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             if (token.isCancellationRequested) return [];
             
             const sym = item.sym;
-            const isSystemFunc = sym.kind === vscode.SymbolKind.Function && (sym.name === "main" || sym.name === "init");
-            if (isSystemFunc) continue;
+            
+            if (sym.kind === vscode.SymbolKind.Function && sym.name === "main") {
+                lenses.push(new GoReferenceCodeLens(sym.range, document.uri, sym.selectionRange.start, sym.kind, sym.name, 'run'));
+                lenses.push(new GoReferenceCodeLens(sym.range, document.uri, sym.selectionRange.start, sym.kind, sym.name, 'debug'));
+                continue;
+            }
+            if (sym.kind === vscode.SymbolKind.Function && sym.name === "init") {
+                continue;
+            }
 
             const addLens = (type: LensType, locs?: vscode.Location[]) => {
                 lenses.push(new GoReferenceCodeLens(
@@ -88,7 +95,6 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
                 }
             } else if (sym.kind === vscode.SymbolKind.Struct || sym.kind === vscode.SymbolKind.Class) {
                 addLens('refs');
-                // Removed 'impls' for structs as requested by clean UI
                 const mLocs = structMethods.get(sym.name) || [];
                 if (mLocs.length > 0) {
                     addLens('methods', mLocs);
@@ -111,6 +117,24 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
         const position = codeLens.identifierPosition;
         const symbolInfo = { name: codeLens.name, kind: codeLens.kind };
         
+        if (codeLens.lensType === 'run') {
+            codeLens.command = {
+                title: '$(play) run',
+                command: 'newgovision.runMain',
+                arguments: [codeLens.uri, false]
+            };
+            return codeLens;
+        }
+
+        if (codeLens.lensType === 'debug') {
+            codeLens.command = {
+                title: '$(debug-alt) debug',
+                command: 'newgovision.runMain',
+                arguments: [codeLens.uri, true]
+            };
+            return codeLens;
+        }
+
         if (codeLens.lensType === 'methods') {
             const locs = codeLens.methodLocations || [];
             const count = locs.length;
@@ -182,14 +206,12 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             
             if (codeLens.kind === vscode.SymbolKind.Method && codeLens.parentKind !== vscode.SymbolKind.Interface) {
                 if (implCount === 0) {
-                    // Try to hide the lens if it's a concrete method that implements nothing
                     title = ""; 
                 } else {
                     title = `impls ${implCount} intfc method${implCount !== 1 ? 's' : ''}`;
                 }
             }
 
-            // Fallback for interfaces with 0 impls (we still want to show "0 impls")
             codeLens.command = {
                 title: title,
                 command: title === "" ? "" : 'newgovision.showLocations',
