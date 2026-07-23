@@ -7,11 +7,46 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "categories": ["Programming Languages"],
-  "activationEvents": ["onLanguage:go"],
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:go"
+  ],
   "main": "./out/extension.js",
   "contributes": {
-    "languages": [{"id": "go", "extensions": [".go"]}]
+    "languages": [
+      {
+        "id": "go",
+        "extensions": [
+          ".go"
+        ]
+      }
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "newgovision-panel",
+          "title": "References (NewGoVision)",
+          "icon": "$(list-tree)"
+        }
+      ]
+    },
+    "views": {
+      "newgovision-panel": [
+        {
+          "id": "newgovision.refsView",
+          "name": "Results",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "newgovision.showLocations",
+        "title": "Show Locations in Panel"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
