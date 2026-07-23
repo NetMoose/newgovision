@@ -8,6 +8,7 @@ export class GoReferenceCodeLens extends vscode.CodeLens {
         public uri: vscode.Uri, 
         public identifierPosition: vscode.Position,
         public kind: vscode.SymbolKind,
+        public name: string,
         public lensType: LensType,
         public parentKind?: vscode.SymbolKind,
         public methodLocations?: vscode.Location[]
@@ -73,7 +74,7 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
 
             const addLens = (type: LensType, locs?: vscode.Location[]) => {
                 lenses.push(new GoReferenceCodeLens(
-                    sym.range, document.uri, sym.selectionRange.start, sym.kind, type, item.parentKind, locs
+                    sym.range, document.uri, sym.selectionRange.start, sym.kind, sym.name, type, item.parentKind, locs
                 ));
             };
 
@@ -105,14 +106,16 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
         if (!(codeLens instanceof GoReferenceCodeLens)) return codeLens;
 
         const position = codeLens.identifierPosition;
+        const symbolInfo = { name: codeLens.name, kind: codeLens.kind };
         
         if (codeLens.lensType === 'methods') {
             const locs = codeLens.methodLocations || [];
             const count = locs.length;
+            const title = `${count} method${count !== 1 ? 's' : ''}`;
             codeLens.command = {
-                title: `${count} method${count !== 1 ? 's' : ''}`,
+                title: title,
                 command: 'newgovision.showLocations',
-                arguments: [locs]
+                arguments: [locs, title, symbolInfo]
             };
             return codeLens;
         }
@@ -159,10 +162,11 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             });
 
             const refCount = finalRefs.length;
+            const title = `${refCount} ref${refCount !== 1 ? 's' : ''}`;
             codeLens.command = {
-                title: `${refCount} ref${refCount !== 1 ? 's' : ''}`,
+                title: title,
                 command: 'newgovision.showLocations',
-                arguments: [finalRefs]
+                arguments: [finalRefs, title, symbolInfo]
             };
         } else if (codeLens.lensType === 'impls') {
             const pureImpls = implLocations.filter(impl => {
@@ -181,7 +185,7 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             codeLens.command = {
                 title: title,
                 command: 'newgovision.showLocations',
-                arguments: [pureImpls]
+                arguments: [pureImpls, title, symbolInfo]
             };
         }
 
