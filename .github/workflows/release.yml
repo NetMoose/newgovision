@@ -19,11 +19,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22' # Using Node 22/24 to avoid deprecation warnings
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build VSIX
         run: make package
@@ -42,6 +42,8 @@ jobs:
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: newgovision-${{ steps.get_version.outputs.VERSION }}.vsix
           generate_release_notes: true
