@@ -7,3 +7,5 @@ src/**
 **/*.ts
 tsconfig.json
 Makefile
+*.vsix
+*.zip
