@@ -1,0 +1,32 @@
+{
+  "name": "newgovision",
+  "publisher": "netmoose",
+  "displayName": "NewGoVision",
+  "description": "Show references count for Go functions and structures",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:go"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [{"id": "go", "extensions": [".go"]}]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.1.0",
+    "@vscode/vsce": "^2.19.0"
+  }
+}
