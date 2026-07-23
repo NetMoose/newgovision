@@ -64,4 +64,7 @@ func main() {
 	tp.Process("direct call")
 
 	_ = helperFunction(1, 2)
+	_ = helperFunction(1, 3)
+	_ = helperFunction(1, 4)
+	_ = helperFunction(1, 5)
 }

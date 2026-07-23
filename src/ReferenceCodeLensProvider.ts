@@ -35,7 +35,6 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
                 document.uri
             );
         } catch (error) {
-            console.error('Error fetching document symbols:', error);
             return lenses;
         }
 
@@ -84,12 +83,16 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
                 const interfaceMethods = sym.children ? sym.children
                     .filter(c => c.kind === vscode.SymbolKind.Method || c.kind === vscode.SymbolKind.Function)
                     .map(c => new vscode.Location(document.uri, c.selectionRange)) : [];
-                addLens('methods', interfaceMethods);
+                if (interfaceMethods.length > 0) {
+                    addLens('methods', interfaceMethods);
+                }
             } else if (sym.kind === vscode.SymbolKind.Struct || sym.kind === vscode.SymbolKind.Class) {
                 addLens('refs');
-                addLens('impls'); 
+                // Removed 'impls' for structs as requested by clean UI
                 const mLocs = structMethods.get(sym.name) || [];
-                addLens('methods', mLocs);
+                if (mLocs.length > 0) {
+                    addLens('methods', mLocs);
+                }
             } else if (sym.kind === vscode.SymbolKind.Method) {
                 addLens('refs');
                 addLens('impls'); 
@@ -176,15 +179,20 @@ export class ReferenceCodeLensProvider implements vscode.CodeLensProvider {
             const implCount = pureImpls.length;
             
             let title = `${implCount} impls`;
-            if (codeLens.kind === vscode.SymbolKind.Struct || codeLens.kind === vscode.SymbolKind.Class) {
-                title = `implements ${implCount} intfc`;
-            } else if (codeLens.kind === vscode.SymbolKind.Method && codeLens.parentKind !== vscode.SymbolKind.Interface) {
-                title = `impls ${implCount} intfc method${implCount !== 1 ? 's' : ''}`;
+            
+            if (codeLens.kind === vscode.SymbolKind.Method && codeLens.parentKind !== vscode.SymbolKind.Interface) {
+                if (implCount === 0) {
+                    // Try to hide the lens if it's a concrete method that implements nothing
+                    title = ""; 
+                } else {
+                    title = `impls ${implCount} intfc method${implCount !== 1 ? 's' : ''}`;
+                }
             }
 
+            // Fallback for interfaces with 0 impls (we still want to show "0 impls")
             codeLens.command = {
                 title: title,
-                command: 'newgovision.showLocations',
+                command: title === "" ? "" : 'newgovision.showLocations',
                 arguments: [pureImpls, title, symbolInfo]
             };
         }
